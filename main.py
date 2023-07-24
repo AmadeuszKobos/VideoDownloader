@@ -1,14 +1,28 @@
 import pytube.exceptions
 from pytube import YouTube
-from sys import argv, exit
 from pathlib import Path
 import tkinter as tk
+from tkinter import ttk
 
 
 def incorrect_url():
     error_label.pack()
     if download_button.winfo_ismapped():
         download_button.pack_forget()
+
+
+def get_resolutions():
+    link = entry.get()
+    try:
+        yt = YouTube(link)
+        resolutions = yt.streams.filter(file_extension="mp4").order_by("resolution").desc()
+        res_available = [str(stream.resolution) for stream in resolutions]
+        resolution_combobox["values"] = res_available
+        default_res = res_available[-1]
+        resolution_combobox.set(default_res)
+    except Exception as e:
+        resolution_combobox["values"] = []
+
 
 def find_video():
     try:
@@ -24,6 +38,9 @@ def find_video():
         video_author_label.config(text="Author:\n" + yt.author)
         video_author_label.pack()
 
+        get_resolutions()
+        resolution_combobox.pack()
+
         download_button.pack()
 
     except pytube.exceptions.RegexMatchError as e:
@@ -31,18 +48,19 @@ def find_video():
     except Exception as e:
         print("En error occured: ", e)
 
+
 def download_video():
     try:
         link = entry.get()
         yt = YouTube(link)
-        stream = yt.streams.get_lowest_resolution()
+        stream = yt.streams.filter(res=resolution_combobox.get(), file_extension='mp4').first()
         path = Path('download_video').resolve()
         stream.download(path)
 
     except pytube.exceptions.RegexMatchError as e:
         incorrect_url()
     except Exception as e:
-        print("En error occured: ", e)
+        print("En error occured in download: ", e)
 
 
 app = tk.Tk()
@@ -61,16 +79,10 @@ find_button.pack()
 
 video_author_label = tk.Label(app)
 video_title_label = tk.Label(app)
+resolution_combobox = ttk.Combobox(app)
 
 download_button = tk.Button(app, text="Download", command=download_video)
 
 error_label = tk.Label(app, text="Incorrect URL address", fg="red")
 
 app.mainloop()
-
-# if __name__ == "__main__":
-#     if len(argv) != 2:
-#         print("Invalid arguments", len(argv))
-#         exit(1)
-#     else:
-#         download_video(argv[1])
